@@ -4,6 +4,7 @@ import asyncio
 import httpx
 from typing import AsyncGenerator
 from openai import AsyncOpenAI  # Ensure you have an async OpenAI client installed
+from langchain_core.runnables import RunnableConfig
 
 # Configuration for the async OpenAI client.
 OPENAI_API_BASE_URL = "http://t1cim-wncchat.wneweb.com.tw/v1"
@@ -21,7 +22,7 @@ openai_client = AsyncOpenAI(
     http_client=http_client
 )
 
-async def stream_openai_tokens(topic: str) -> AsyncGenerator[str, None]:
+async def stream_openai_tokens(topic: str, config: RunnableConfig = None) -> AsyncGenerator[str, None]:
     """
     Streams tokens from the async LLM client.
 

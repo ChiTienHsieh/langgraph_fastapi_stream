@@ -22,8 +22,9 @@ async def run_direct(client_mode: str = "openai", use_langgraph: bool = False, t
             "topic": topic,
             "client_fn": client_fn  # Pass client_fn in inputs instead of config
         }
-        async for token_chunk, _ in graph.astream(inputs, stream_mode="custom"):
-            print(token_chunk["token"], end="", flush=True)
+        config = {"stream_mode": "custom"}  # Required for Python < 3.11
+        async for output in graph.astream(inputs, config=config):
+            print(output["content"], end="", flush=True)
     else:
         print("Streaming directly:")
         async for token in stream_plain(topic, client_fn):

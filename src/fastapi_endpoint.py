@@ -28,9 +28,10 @@ def create_app(client_mode: str = "openai", use_langgraph: bool = False):
                         "client_fn": client_fn
                     }
                     content_received = False
-                    async for token_chunk, _ in graph.astream(inputs, stream_mode="custom"):
+                    config = {"stream_mode": "custom"}  # Required for Python < 3.11
+                    async for output in graph.astream(inputs, config=config):
                         content_received = True
-                        yield token_chunk["token"]
+                        yield output["content"]
                         await asyncio.sleep(0.01)
                     
                     # If no content was received, yield a message

@@ -1,0 +1,20 @@
+Read the README.md first.
+
+You final task is to pass all tests, or at least, try to let the test can distinguish ideal streaming output from failed streaming output.
+
+add log in test so the tests print the LLM's response tokens.
+
+I intentionally comment out API base_url and api_key, that is the right implementation, leave it as it is.
+I am sure gpt-4o-mini-2024-07-18 is correct model.
+
+The following context may help
+
+<context>
+I am experiencing an issue with streaming LLM tokens in a LangGraph node without using LangChain, while running Python 3.10.11. According to the LangGraph documentation:
+
+<note_in_langgraph_documentation>
+Async in Python &lt; 3.11
+
+When using Python &lt; 3.11 with async code, please ensure you manually pass the RunnableConfig through to the chat model when invoking it like so: model.ainvoke(..., config). The stream method collects all events from your nested code using a streaming tracer passed as a callback. In 3.11 and above, this is automatically handled via contextvars; prior to 3.11, asyncio's tasks lacked proper contextvar support, meaning that the callbacks will only propagate if you manually pass the config through. We do this in the call_model function below.
+</note_in_langgraph_documentation>
+</context>

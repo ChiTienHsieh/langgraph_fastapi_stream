@@ -4,6 +4,7 @@ import os
 from typing import AsyncGenerator
 from langchain_openai import ChatOpenAI
 from langchain.callbacks.base import BaseCallbackHandler
+from langchain_core.runnables import RunnableConfig
 
 class QueueCallbackHandler(BaseCallbackHandler):
     """Callback handler that pushes tokens to an asyncio queue."""
@@ -16,7 +17,7 @@ class QueueCallbackHandler(BaseCallbackHandler):
         # Increase delay to simulate real-time streaming.
         await asyncio.sleep(0.2)  # Adjust delay as needed
 
-async def stream_langchain_tokens(topic: str) -> AsyncGenerator[str, None]:
+async def stream_langchain_tokens(topic: str, config: RunnableConfig = None) -> AsyncGenerator[str, None]:
     """
     Streams tokens using LangChain's ChatOpenAI client with streaming enabled.
     Tokens are yielded as they are received via the callback.
@@ -46,9 +47,12 @@ async def stream_langchain_tokens(topic: str) -> AsyncGenerator[str, None]:
             # api_key=os.environ['ORION_CTH_API_KEY']
         )
 
-        # Run the model invocation in the background.
+        # Run the model invocation in the background with config
         generate_task = asyncio.create_task(
-            model.ainvoke([{"role": "user", "content": f"Tell me a joke about {topic}"}])
+            model.ainvoke(
+                [{"role": "user", "content": f"Tell me a joke about {topic}"}],
+                config=config
+            )
         )
 
         # Create a background task that waits for the generation to complete,
