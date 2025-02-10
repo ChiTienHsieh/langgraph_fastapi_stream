@@ -4,11 +4,11 @@ from langgraph.graph import StateGraph, START, END
 
 async def langgraph_node(state, config):
     """
-    A LangGraph node that uses a client function (passed in config) to stream tokens.
-    Expects config["client_fn"] to be an async generator function.
+    A LangGraph node that uses a client function (passed in state) to stream tokens.
+    Expects state["client_fn"] to be an async generator function.
     """
     topic = state["topic"]
-    client_fn = config["client_fn"]
+    client_fn = state["client_fn"]
     async for token in client_fn(topic):
         yield {"token": token}
 

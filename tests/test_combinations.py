@@ -50,16 +50,15 @@ def test_api_endpoint(client_mode, use_langgraph):
     """
     app = create_app(client_mode=client_mode, use_langgraph=use_langgraph)
     client = TestClient(app)
-    response = client.get("/stream?topic=test", stream=True)
-    
-    assert response.status_code == 200, "API endpoint did not return 200 OK."
+    with client.stream("GET", "/stream?topic=test") as response:
+        assert response.status_code == 200, "API endpoint did not return 200 OK."
 
-    # Stream the output directly
-    print(f"\n[API Endpoint] (client_mode={client_mode}, langgraph={use_langgraph}):")
-    content_received = False
-    for chunk in response.iter_text():
-        print(chunk, end="", flush=True)
-        if chunk.strip():
-            content_received = True
-    
-    assert content_received, "API endpoint returned no content"
+        # Stream the output directly
+        print(f"\n[API Endpoint] (client_mode={client_mode}, langgraph={use_langgraph}):")
+        content_received = False
+        for chunk in response.iter_text():
+            print(chunk, end="", flush=True)
+            if chunk.strip():
+                content_received = True
+        
+        assert content_received, "API endpoint returned no content"

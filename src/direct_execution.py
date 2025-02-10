@@ -17,9 +17,11 @@ async def run_direct(client_mode: str = "openai", use_langgraph: bool = False, t
     if use_langgraph:
         print("Streaming via LangGraph:")
         graph = build_langgraph(client_fn)
-        # Pass the client function via the config
-        config = {"client_fn": client_fn}
-        inputs = {"topic": topic}
+        # Pass the client function via the config and inputs
+        inputs = {
+            "topic": topic,
+            "client_fn": client_fn  # Pass client_fn in inputs instead of config
+        }
         async for token_chunk, _ in graph.astream(inputs, stream_mode="custom"):
             print(token_chunk["token"], end="", flush=True)
     else:
