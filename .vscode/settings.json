@@ -1,0 +1,10 @@
+{
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "python.testing.pytestArgs": [
+      "-s",  // This flag disables output capturing, so print/log statements will appear in the terminal.
+      "--maxfail=1",
+      "--disable-warnings"
+    ]
+}
+  

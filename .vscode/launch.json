@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: Test",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "-s",  // Pass -s to disable output capturing.
+        "${workspaceFolder}/tests"
+      ],
+      "justMyCode": true
+    }
+  ]
+}
