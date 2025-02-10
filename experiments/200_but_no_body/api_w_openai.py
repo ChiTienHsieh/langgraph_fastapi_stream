@@ -1,10 +1,23 @@
 import asyncio
 import concurrent.futures
-import openai
+# import openai
+from openai import OpenAI
 from langgraph.graph import StateGraph, START, END
 from fastapi import FastAPI, Query
 from fastapi.responses import StreamingResponse
 import uvicorn
+
+import os, httpx
+OPENAI_API_BASE_URL = "http://t1cim-wncchat.wneweb.com.tw/v1"
+ORION_CTH_API_KEY = os.environ['ORION_CTH_API_KEY']
+http_client = httpx.Client(verify=False)
+# Initialize the async OpenAI client.
+# (Ensure your API key is set in your environment: e.g., export OPENAI_API_KEY="YOUR_KEY")
+openai = OpenAI(    
+    api_key = ORION_CTH_API_KEY,
+    base_url = "http://t1cim-wncchat.wneweb.com.tw/v1",
+    http_client = http_client 
+)
 
 
 # Define the LangGraph node as an async generator for custom streaming.
@@ -20,15 +33,20 @@ async def call_model(state, config):
     def run_openai():
         try:
             response = openai.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4o-mini-2024-07-18", # works
+                # model="gpt-4o-mini",
+                # model="gpt-4o-mini-2024-07-18\n",
                 messages=[{"role": "user", "content": f"Tell me a joke about {topic}"}],
                 stream=True,
             )
             # For each chunk from the API, extract the token and push it onto the queue.
             for chunk in response:
-                token = chunk.choices[0].delta.content
-                if token:
-                    asyncio.run_coroutine_threadsafe(q.put(token), loop)
+                if chunk.choices != []:
+                    token = chunk.choices[0].delta.content
+                    if token:
+                        asyncio.run_coroutine_threadsafe(q.put(token), loop)
+                else:
+                    asyncio.run_coroutine_threadsafe(q.put(None), loop)
             # Signal the end of the stream.
             asyncio.run_coroutine_threadsafe(q.put(None), loop)
         except Exception as e:

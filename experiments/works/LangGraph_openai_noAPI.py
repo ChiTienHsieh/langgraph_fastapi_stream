@@ -15,27 +15,23 @@ Requirements:
   - openai package installed (for AsyncOpenAI)
   - Proper API key set for OpenAI (set in your environment as OPENAI_API_KEY)
 """
-
 import asyncio
-
-# Import the necessary components from LangGraph.
-# StateGraph is used to build the workflow, START and END are special nodes.
 from langgraph.graph import StateGraph, START, END
-
-# For typing the state, we use TypedDict and Annotated (from typing_extensions).
 from typing_extensions import Annotated, TypedDict
-
-# Import the updater function 'add_messages' so that the state key "joke" is
-# recognized as one that can be updated (i.e. appended to).
 from langgraph.graph.message import add_messages
-
-# Import the asynchronous OpenAI client.
-# Make sure you have set your OPENAI_API_KEY in your environment.
 from openai import AsyncOpenAI
+import os, httpx
 
+OPENAI_API_BASE_URL = "http://t1cim-wncchat.wneweb.com.tw/v1"
+ORION_CTH_API_KEY = os.environ['ORION_CTH_API_KEY'],
+http_client = httpx.AsyncClient(verify=False)
 # Initialize the async OpenAI client.
 # (Ensure your API key is set in your environment: e.g., export OPENAI_API_KEY="YOUR_KEY")
-openai_client = AsyncOpenAI()
+openai_client = AsyncOpenAI(    
+    api_key = os.environ['ORION_CTH_API_KEY'],
+    base_url = "http://t1cim-wncchat.wneweb.com.tw/v1",
+    http_client = http_client 
+)
 
 
 async def stream_tokens(messages):
@@ -50,19 +46,23 @@ async def stream_tokens(messages):
     """
     # Call the async chat completions API with streaming enabled.
     response = await openai_client.chat.completions.create(
-        model="gpt-4o-mini",  # Replace with your desired model
+        model="gpt-4o-mini-2024-07-18",  # Replace with your desired model
         messages=messages,
         stream=True,
     )
     # Iterate asynchronously over the streaming response.
     async for chunk in response:
-        # Each chunk contains a list of choices; we take the first one.
-        delta = chunk.choices[0].delta
-        # Check if this delta has non-empty "content" (i.e. a token)
-        if delta.content:
-            # add a 0.5 second delay to simulate real-time streaming
-            await asyncio.sleep(0.5)
-            yield delta.content
+        if chunk.choices != []:
+            # Each chunk contains a list of choices; we take the first one.
+            delta = chunk.choices[0].delta
+            # Check if this delta has non-empty "content" (i.e. a token)
+            if delta.content:
+                # add a 0.5 second delay to simulate real-time streaming
+                await asyncio.sleep(0.1)
+                yield delta.content
+        else:
+            # If the chunk has no choices, we yield None.
+            yield "\n\n End of stream"
 
 
 async def call_model(state):
@@ -139,3 +139,4 @@ async def main():
 if __name__ == "__main__":
     asyncio.run(main())
 
+# works for python 3.10.11
