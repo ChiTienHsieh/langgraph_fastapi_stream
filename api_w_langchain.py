@@ -23,6 +23,9 @@ async def call_model(state, config):
     response = await model.ainvoke(
         [{"role": "user", "content": f"Tell me a joke about {topic}"}], config=config
     )
+
+    # print to see the order
+    print("right before call_model's return statement") 
     # The response's content aggregates the streamed tokens
     return {"joke": response.content}
 
@@ -52,6 +55,7 @@ async def stream_joke(topic: str = Query("dogs", description="Topic for the joke
             # Optionally simulate processing delay
             await asyncio.sleep(0.3)
             if msg.content:
+                print(f"[STREAM] Token: {msg.content}")  # Log the toke
                 # Yield each chunk of content followed by a newline
                 yield f"{msg.content}\n"
 
