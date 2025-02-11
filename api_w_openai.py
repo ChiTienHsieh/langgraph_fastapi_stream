@@ -6,6 +6,7 @@ from openai import AsyncOpenAI, AuthenticationError
 from langgraph.graph import StateGraph, START, END
 from fastapi import FastAPI, Query
 from fastapi.responses import StreamingResponse
+from langchain_core.runnables import RunnableConfig
 import uvicorn
 import os
 import httpx
@@ -24,7 +25,7 @@ openai_client = AsyncOpenAI(
 )
 
 
-async def call_model(state, config):
+async def call_model(state, config: RunnableConfig):
     """
     A LangGraph node that calls OpenAI's chat completion API with streaming enabled
     and yields tokens as they arrive.

@@ -3,14 +3,14 @@
   "configurations": [
     {
       "name": "Python: Test",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "pytest",
       "args": [
         "-s",  // Pass -s to disable output capturing.
         "${workspaceFolder}/tests"
       ],
-      "justMyCode": true
+      "justMyCode": false
     }
   ]
 }

@@ -4,6 +4,7 @@ from fastapi import FastAPI, Query
 from fastapi.responses import StreamingResponse
 from langgraph.graph import StateGraph, START, END
 from langchain_openai import ChatOpenAI
+from langchain_core.runnables import RunnableConfig
 
 app = FastAPI()
 
@@ -17,7 +18,7 @@ model = ChatOpenAI(model="gpt-4o-mini-2024-07-18", streaming=True, api_key=ORION
 
 
 # In Python 3.10, our node function must accept the extra config parameter
-async def call_model(state, config):
+async def call_model(state, config: RunnableConfig):
     topic = state["topic"]
     # Manually pass the config to ensure callbacks propagate
     response = await model.ainvoke(
@@ -49,7 +50,7 @@ async def stream_joke(topic: str = Query("dogs", description="Topic for the joke
     async def event_generator():
         # Prepare inputs and config
         inputs = {"topic": topic}
-        config = {}  # Dummy config; typically managed internally by LangChain
+        # config: RunnableConfig = {}  # Dummy config; typically managed internally by LangChain
         # Iterate over the streamed messages from the graph
         async for msg, metadata in graph.astream(inputs, stream_mode="messages"):
             # Optionally simulate processing delay
