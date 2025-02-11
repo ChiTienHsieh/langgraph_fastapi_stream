@@ -9,12 +9,13 @@ from langchain_core.runnables import RunnableConfig
 app = FastAPI()
 
 import os, httpx
-OPENAI_API_BASE_URL = "http://t1cim-wncchat.wneweb.com.tw/v1"
-ORION_CTH_API_KEY = os.environ['ORION_CTH_API_KEY']
-http_client = httpx.Client(verify=False)
+# OPENAI_API_BASE_URL = "http://t1cim-wncchat.wneweb.com.tw/v1"
+# ORION_CTH_API_KEY = os.environ['ORION_CTH_API_KEY']
+# http_client = httpx.Client(verify=False)
 
 # Initialize the ChatOpenAI model with streaming enabled
-model = ChatOpenAI(model="gpt-4o-mini-2024-07-18", streaming=True, api_key=ORION_CTH_API_KEY, base_url=OPENAI_API_BASE_URL, http_client=http_client)
+# model = ChatOpenAI(model="gpt-4o-mini-2024-07-18", streaming=True, api_key=ORION_CTH_API_KEY, base_url=OPENAI_API_BASE_URL, http_client=http_client)
+model = ChatOpenAI(model="gpt-4o-mini-2024-07-18", streaming=True)
 
 
 # In Python 3.10, our node function must accept the extra config parameter

@@ -1,7 +1,12 @@
 import pytest
 import asyncio
 import json
+import logging
 from fastapi.testclient import TestClient
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # Import functions from your src modules.
 from src.direct_execution import run_direct
@@ -90,31 +95,38 @@ def test_api_endpoint(client_mode, use_langgraph):
     Tests the FastAPI streaming endpoint with enhanced content validation.
     Verifies that the streamed content is meaningful and error-free.
     """
+    logger.info(f"Starting API endpoint test (client_mode={client_mode}, langgraph={use_langgraph})")
     app = create_app(client_mode=client_mode, use_langgraph=use_langgraph)
     client = TestClient(app)
     
     with client.stream("GET", "/stream?topic=test") as response:
+        logger.info(f"Response status code: {response.status_code}")
         assert response.status_code == 200, "API endpoint did not return 200 OK."
-        print(f"\n[API Endpoint] (client_mode={client_mode}, langgraph={use_langgraph}):")
         
         content = ""
         error_detected = False
         
         for chunk in response.iter_text():
             content += chunk
-            print(chunk, end="", flush=True)
+            logger.info(f"Received chunk: {chunk.strip()}")
             
             # Check for error messages in the chunk
             if "error" in chunk.lower():
                 error_message = chunk.strip()
+                logger.error(f"Error in stream: {error_message}")
                 error_detected = True
                 pytest.fail(f"Error in stream: {error_message}")
         
         # Validate the complete content
-        assert is_meaningful_content(content), (
-            f"API endpoint did not produce meaningful content. Mode: {client_mode}, "
-            f"LangGraph: {use_langgraph}. Received: {content}"
-        )
+        if not is_meaningful_content(content):
+            logger.error(
+                f"API endpoint did not produce meaningful content. Mode: {client_mode}, "
+                f"LangGraph: {use_langgraph}. Received: {content}"
+            )
+            pytest.fail(
+                f"API endpoint did not produce meaningful content. Mode: {client_mode}, "
+                f"LangGraph: {use_langgraph}. Received: {content}"
+            )
         
         if use_langgraph and not error_detected:
             # Additional validation for LangGraph responses
@@ -125,3 +137,5 @@ def test_api_endpoint(client_mode, use_langgraph):
             except json.JSONDecodeError:
                 # Not JSON content, which is fine - just validate it's meaningful
                 pass
+        
+        logger.info(f"API endpoint test passed (client_mode={client_mode}, langgraph={use_langgraph})")

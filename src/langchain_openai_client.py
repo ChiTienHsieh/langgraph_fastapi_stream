@@ -8,7 +8,7 @@ from langchain_core.runnables import RunnableConfig
 import httpx
 
 # For disabling SSL verification when needed:
-http_client = httpx.AsyncClient(verify=False)
+# http_client = httpx.AsyncClient(verify=False)
 
 class QueueCallbackHandler(BaseCallbackHandler):
     """Callback handler that pushes tokens to an asyncio queue."""
@@ -43,9 +43,9 @@ async def stream_langchain_tokens(topic: str, config: RunnableConfig = None) -> 
             streaming=True,
             callbacks=[handler],
             request_timeout=30.0,
-            base_url="http://t1cim-wncchat.wneweb.com.tw/v1", 
-            api_key=os.environ['ORION_CTH_API_KEY'],
-            http_async_client=http_client
+            # base_url="http://t1cim-wncchat.wneweb.com.tw/v1", 
+            # api_key=os.environ['ORION_CTH_API_KEY'],
+            # http_async_client=http_client
         )
 
         generate_task = asyncio.create_task(

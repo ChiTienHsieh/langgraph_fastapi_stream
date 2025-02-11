@@ -1,75 +1,75 @@
 # src/langgraph_impl.py
-import asyncio
+import logging
 from langgraph.graph import StateGraph, START, END
 from langchain_core.runnables import RunnableConfig
 from langchain_core.messages import AIMessage
 
-from typing import Dict, Any, AsyncGenerator, Tuple, Optional
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-class LangGraphError(Exception):
-    """Custom exception for LangGraph-related errors."""
-    pass
-
-async def langgraph_node(state: Dict[str, Any], config: RunnableConfig) -> AsyncGenerator[Dict[str, Any], None]:
+async def call_model(state, config: RunnableConfig):
     """
-    A LangGraph node that uses a client function (passed in state) to stream tokens.
-    Expects state["client_fn"] to be an async generator function.
+    A LangGraph node that uses a client function to generate content.
     
     Args:
         state: The current state containing topic and client function
-        config: RunnableConfig for proper streaming in Python < 3.11
+        config: RunnableConfig for proper streaming
     
-    Yields:
-        Dict[str, Any]: The output containing the token and any error information
-    
-    Raises:
-        LangGraphError: If there are issues with the client function or token streaming
+    Returns:
+        Dict containing the generated content or error
     """
     topic = state.get("topic")
     client_fn = state.get("client_fn")
     
     if not topic or not client_fn:
-        raise LangGraphError("Missing required state: 'topic' or 'client_fn'")
+        logger.error("Missing required state: 'topic' or 'client_fn'")
+        return {"error": "Missing required state: 'topic' or 'client_fn'"}
     
     try:
-        content_received = False
+        logger.info(f"Generating content for topic: {topic}")
+        full_response = ""
         async for token in client_fn(topic, config=config):
-            if not isinstance(token, (str, dict)):
-                continue
-                
-            # Handle both string tokens and dictionary responses
-            content = token if isinstance(token, str) else token.get('content', '')
-            
-            if content and content.strip():
-                content_received = True
-                # Return in the format expected by LangGraph
-                yield {"content": content}
+            if isinstance(token, dict):
+                if "error" in token:
+                    logger.error(f"Error from client: {token['error']}")
+                    return {"error": token["error"]}
+                elif "content" in token:
+                    logger.debug(f"Received token: {token['content']}")
+                    full_response += token["content"]
+            elif isinstance(token, str):
+                logger.debug(f"Received string token: {token}")
+                full_response += token
         
-        if not content_received:
-            yield {"error": "No meaningful content received from LLM"}
+        if not full_response.strip():
+            logger.warning("No content received from client")
+            return {"error": "No content received"}
+            
+        logger.info("Successfully generated content")
+        return {"joke": full_response}  # Match the working example's response format
             
     except Exception as e:
-        error_msg = f"Error during token streaming: {str(e)}"
-        yield {"error": error_msg}
+        error_msg = f"Error in call_model: {str(e)}"
+        logger.error(error_msg)
+        return {"error": error_msg}
 
 def build_langgraph(client_fn):
     """
-    Constructs a LangGraph state graph using the langgraph_node.
+    Constructs a LangGraph state graph.
     
     Args:
-        client_fn: An async generator function that streams tokens
+        client_fn: An async function that generates content
         
     Returns:
         A compiled LangGraph workflow
     """
-    workflow = StateGraph(dict)
+    workflow = (
+        StateGraph(dict)
+        .add_node("call_model", call_model)
+        .add_edge(START, "call_model")
+        .add_edge("call_model", END)
+        .compile()
+    )
     
-    # Add the node and set it as the entry point
-    workflow.add_node("generate", langgraph_node)
-    workflow.set_entry_point("generate")
-    
-    # Add edge to END
-    workflow.add_edge("generate", END)
-    
-    # Compile the graph
-    return workflow.compile()
+    logger.info("Built LangGraph workflow")
+    return workflow
