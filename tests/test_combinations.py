@@ -1,10 +1,37 @@
 import pytest
 import asyncio
+import json
 from fastapi.testclient import TestClient
 
 # Import functions from your src modules.
 from src.direct_execution import run_direct
 from src.fastapi_endpoint import create_app
+
+def is_meaningful_content(content: str) -> bool:
+    """
+    Check if the content is meaningful by verifying:
+    1. It's not empty
+    2. It's not just whitespace
+    3. It's not just a generic error message
+    4. It contains more than just basic punctuation
+    """
+    if not content or not content.strip():
+        return False
+        
+    # List of common error messages or placeholder content
+    error_patterns = [
+        "No content received",
+        "Error during token streaming",
+        "Missing required state",
+    ]
+    
+    for pattern in error_patterns:
+        if pattern in content:
+            return False
+            
+    # Check if content has actual words (more than just punctuation)
+    words = [word for word in content.split() if any(c.isalnum() for c in word)]
+    return len(words) > 0
 
 # -------------------------------
 # Test for Direct Execution Mode
@@ -20,27 +47,33 @@ from src.fastapi_endpoint import create_app
 async def test_direct_execution(capsys, client_mode, use_langgraph):
     """
     Runs the direct execution (CLI) mode and captures stdout.
-    Expects that some non-empty output (i.e. streaming tokens and end marker)
-    is printed to stdout.
+    Validates that meaningful content is generated and properly streamed.
     """
     await run_direct(client_mode=client_mode, use_langgraph=use_langgraph, topic="test")
-    # Capture the printed output
     captured = capsys.readouterr().out
-    # Log the captured output for debugging
     print(f"[Direct Execution] (client_mode={client_mode}, langgraph={use_langgraph}):")
     print(captured)
-    # Assert that we did get meaningful output beyond just headers
+    
     output = captured.strip()
     if use_langgraph:
         assert "Streaming via LangGraph:" in output, "Missing LangGraph header"
-        # Remove the header to check actual content
         content = output.replace("Streaming via LangGraph:", "").strip()
-        assert content != "", "LangGraph execution produced no content beyond header"
+        
+        # Check for error messages
+        if "error" in content.lower():
+            pytest.fail(f"LangGraph execution encountered an error: {content}")
+            
+        assert is_meaningful_content(content), (
+            "LangGraph execution did not produce meaningful content. "
+            f"Received: {content}"
+        )
     else:
         assert "Streaming directly:" in output, "Missing direct streaming header"
-        # Remove the header to check actual content
         content = output.replace("Streaming directly:", "").strip()
-        assert content != "", "Direct execution produced no content beyond header"
+        assert is_meaningful_content(content), (
+            "Direct execution did not produce meaningful content. "
+            f"Received: {content}"
+        )
 
 # -------------------------------
 # Test for FastAPI Endpoint Mode
@@ -54,34 +87,41 @@ async def test_direct_execution(capsys, client_mode, use_langgraph):
 ])
 def test_api_endpoint(client_mode, use_langgraph):
     """
-    Creates the FastAPI app for the given configuration,
-    calls the /stream endpoint, and streams the output directly.
-    Expects a 200 response and successful streaming.
+    Tests the FastAPI streaming endpoint with enhanced content validation.
+    Verifies that the streamed content is meaningful and error-free.
     """
     app = create_app(client_mode=client_mode, use_langgraph=use_langgraph)
     client = TestClient(app)
+    
     with client.stream("GET", "/stream?topic=test") as response:
         assert response.status_code == 200, "API endpoint did not return 200 OK."
-
-        # Stream the output directly
         print(f"\n[API Endpoint] (client_mode={client_mode}, langgraph={use_langgraph}):")
-        # Stream and check content
-        content_received = False
+        
         content = ""
+        error_detected = False
         
         for chunk in response.iter_text():
             content += chunk
             print(chunk, end="", flush=True)
             
-            # For LangGraph, we need to check for meaningful content beyond the "No content" message
-            if use_langgraph:
-                if chunk.strip() and "No content received from LLM" not in chunk:
-                    content_received = True
-            else:
-                if chunk.strip():
-                    content_received = True
+            # Check for error messages in the chunk
+            if "error" in chunk.lower():
+                error_message = chunk.strip()
+                error_detected = True
+                pytest.fail(f"Error in stream: {error_message}")
         
-        if use_langgraph:
-            assert content_received, "LangGraph API endpoint returned no meaningful content"
-        else:
-            assert content_received, "API endpoint returned no content"
+        # Validate the complete content
+        assert is_meaningful_content(content), (
+            f"API endpoint did not produce meaningful content. Mode: {client_mode}, "
+            f"LangGraph: {use_langgraph}. Received: {content}"
+        )
+        
+        if use_langgraph and not error_detected:
+            # Additional validation for LangGraph responses
+            try:
+                # Try to parse any JSON content if present
+                json_content = json.loads(content)
+                assert "error" not in json_content, f"Error in response: {json_content['error']}"
+            except json.JSONDecodeError:
+                # Not JSON content, which is fine - just validate it's meaningful
+                pass

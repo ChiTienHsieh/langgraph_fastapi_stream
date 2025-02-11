@@ -2,8 +2,13 @@
 import asyncio
 from langgraph.graph import StateGraph, START, END
 from langchain_core.runnables import RunnableConfig
+from langchain_core.messages import AIMessage
 
-from typing import Dict, Any, AsyncGenerator, Tuple
+from typing import Dict, Any, AsyncGenerator, Tuple, Optional
+
+class LangGraphError(Exception):
+    """Custom exception for LangGraph-related errors."""
+    pass
 
 async def langgraph_node(state: Dict[str, Any], config: RunnableConfig) -> AsyncGenerator[Dict[str, Any], None]:
     """
@@ -15,18 +20,47 @@ async def langgraph_node(state: Dict[str, Any], config: RunnableConfig) -> Async
         config: RunnableConfig for proper streaming in Python < 3.11
     
     Yields:
-        Dict[str, Any]: The output containing the token
-    """
-    topic = state["topic"]
-    client_fn = state["client_fn"]
+        Dict[str, Any]: The output containing the token and any error information
     
-    async for token in client_fn(topic, config=config):
-        # Return in the format expected by LangGraph
-        yield {"content": token}
+    Raises:
+        LangGraphError: If there are issues with the client function or token streaming
+    """
+    topic = state.get("topic")
+    client_fn = state.get("client_fn")
+    
+    if not topic or not client_fn:
+        raise LangGraphError("Missing required state: 'topic' or 'client_fn'")
+    
+    try:
+        content_received = False
+        async for token in client_fn(topic, config=config):
+            if not isinstance(token, (str, dict)):
+                continue
+                
+            # Handle both string tokens and dictionary responses
+            content = token if isinstance(token, str) else token.get('content', '')
+            
+            if content and content.strip():
+                content_received = True
+                # Return in the format expected by LangGraph
+                yield {"content": content}
+        
+        if not content_received:
+            yield {"error": "No meaningful content received from LLM"}
+            
+    except Exception as e:
+        error_msg = f"Error during token streaming: {str(e)}"
+        yield {"error": error_msg}
 
 def build_langgraph(client_fn):
     """
     Constructs a LangGraph state graph using the langgraph_node.
+    
+    Args:
+        client_fn: An async generator function that streams tokens
+        
+    Returns:
+        A compiled LangGraph workflow
     """
     workflow = StateGraph(dict)
     

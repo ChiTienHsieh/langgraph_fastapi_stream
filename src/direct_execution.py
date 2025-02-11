@@ -24,7 +24,10 @@ async def run_direct(client_mode: str = "openai", use_langgraph: bool = False, t
         }
         config = {"stream_mode": "custom"}  # Required for Python < 3.11
         async for output in graph.astream(inputs, config=config):
-            print(output["content"], end="", flush=True)
+            if "error" in output:
+                print(f"Error: {output['error']}", end="", flush=True)
+            elif "content" in output:
+                print(output["content"], end="", flush=True)
     else:
         print("Streaming directly:")
         async for token in stream_plain(topic, client_fn):
