@@ -108,7 +108,8 @@ def test_api_endpoint(client_mode, use_langgraph):
         
         for chunk in response.iter_text():
             content += chunk
-            logger.info(f"Received chunk: {chunk.strip()}")
+            # logger.info(f"Received chunk: {chunk.strip()}")
+            logger.info(f"Chunk: {' | '.join(part.strip() for part in chunk.split() if part.strip())}")
             
             # Check for error messages in the chunk
             if "error" in chunk.lower():
