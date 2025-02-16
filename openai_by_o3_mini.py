@@ -6,14 +6,14 @@ from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 
 import os, httpx
-OPENAI_API_BASE_URL = "http://t1cim-wncchat.wneweb.com.tw/v1"
-ORION_CTH_API_KEY = os.environ['ORION_CTH_API_KEY']
-http_client = httpx.Client(verify=False)
+# OPENAI_API_BASE_URL = "http://t1cim-wncchat.wneweb.com.tw/v1"
+# ORION_CTH_API_KEY = os.environ['ORION_CTH_API_KEY']
+# http_client = httpx.Client(verify=False)
 
 client = openai.Client(   
-api_key=ORION_CTH_API_KEY,
-base_url=OPENAI_API_BASE_URL,
-http_client=http_client
+# api_key=ORION_CTH_API_KEY,
+# base_url=OPENAI_API_BASE_URL,
+# http_client=http_client
 )
     
 # Your custom openai streaming call (blocking)

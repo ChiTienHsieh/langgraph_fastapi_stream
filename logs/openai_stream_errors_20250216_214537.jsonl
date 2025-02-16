@@ -1,0 +1,1 @@
+{"timestamp": "2025-02-16T21:45:38.064617", "response": {"error": "Connection error: Error code: 404 - {'error': {'message': 'The model `invalid-model-name` does not exist or you do not have access to it.', 'type': 'invalid_request_error', 'param': None, 'code': 'model_not_found'}}"}}

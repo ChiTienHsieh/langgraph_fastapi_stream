@@ -17,50 +17,40 @@ logger = logging.getLogger(__name__)
 
 # Create an async HTTP client with SSL verification enabled
 http_client = httpx.AsyncClient()
-# For disabling SSL verification when needed:
-# http_client = httpx.AsyncClient(verify=False)
 
-# Initialize the async OpenAI client.
-openai_client = AsyncOpenAI(
-    # api_key=ORION_CTH_API_KEY,
-    # base_url=OPENAI_API_BASE_URL,
-    # http_client=http_client
-)
+# Initialize the async OpenAI client with configurable model
+class OpenAIStreamClient:
+    def __init__(self):
+        self.client = AsyncOpenAI()
+        self.model = 'gpt-4o-mini-2024-07-18'  # Default model
+        
+    async def stream_tokens(self, topic: str, config: RunnableConfig = None) -> AsyncGenerator[dict, None]:
+        try:
+            messages = [{"role": "user", "content": f"Tell me a joke about {topic}"}]
+            
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                stream=True,
+                timeout=30.0
+            )
+            
+            async for chunk in response:
+                yield chunk
+                
+        except Exception as e:
+            # For errors, we still need to yield a dict since we can't create OpenAI objects
+            error_msg = f"Connection error: {str(e)}"
+            logger.error(f"Error in stream_tokens: {error_msg}")
+            yield {"error": error_msg}
+
+# Create a singleton instance
+openai_client = OpenAIStreamClient()
 
 async def stream_openai_tokens(topic: str, config: RunnableConfig = None) -> AsyncGenerator[dict, None]:
     """
-    Streams tokens from the async LLM client.
-
-    Args:
-        topic (str): The topic for the joke.
-        config (RunnableConfig, optional): Configuration for the runnable.
-
-    Yields:
-        dict: Each token wrapped in a dict with 'content' or 'error' key
+    Public interface for streaming tokens from the OpenAI client.
+    Delegates to the singleton client instance.
     """
-    try:
-        messages = [{"role": "user", "content": f"Tell me a joke about {topic}"}]
-        
-        # Call the async chat completions API with streaming enabled
-        response = await openai_client.chat.completions.create(
-            model="gpt-4o-mini-2024-07-18",
-            messages=messages,
-            stream=True,
-            timeout=30.0
-        )
-        
-        full_response = ""
-        async for chunk in response:
-            if chunk.choices and chunk.choices[0].delta.content:
-                content = chunk.choices[0].delta.content
-                full_response += content
-                yield {"content": content}
-        
-        if not full_response.strip():
-            logger.warning("No content received from OpenAI API")
-            yield {"error": "No content received from API"}
-            
-    except Exception as e:
-        error_msg = f"Connection error: {str(e)}"
-        logger.error(f"Error in stream_openai_tokens: {error_msg}")
-        yield {"error": error_msg}
+    async for response in openai_client.stream_tokens(topic, config):
+        yield response
